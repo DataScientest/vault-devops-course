@@ -1,7 +1,7 @@
 version: "3.7"
 services:
   vault:
-    image: vault:2.0
+    image: hashicorp/vault:2.0
     container_name: vault
     hostname: vault
     ports:
