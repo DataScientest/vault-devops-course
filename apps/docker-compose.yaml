@@ -18,7 +18,7 @@ services:
       - vault-net    
 
   vault-microservice:
-    image: intekhabrizvi/vault-beginner-microservice:latest
+    image: nom_de_votre_image:tag
     container_name: vault-microservice
     depends_on:
       - vault-dev
