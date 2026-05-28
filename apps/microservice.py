@@ -3,46 +3,87 @@
 import os
 import requests
 from fastapi import FastAPI
+from pymongo import MongoClient
 
-VAULT_ADDR = os.getenv("VAULT_ADDR", "http://vault-dev:8200")
+VAULT_ADDR = os.getenv("VAULT_ADDR", "http://vault:8200")
+
 ROLE_ID = os.getenv("ROLE_ID")
 SECRET_ID = os.getenv("SECRET_ID")
 
+app = FastAPI()
+
+
+# Authentification AppRole
 def get_vault_token():
+
     url = f"{VAULT_ADDR}/v1/auth/approle/login"
+
     payload = {
         "role_id": ROLE_ID,
         "secret_id": SECRET_ID
     }
 
-    res = requests.post(url, json=payload)
-    return res.json()["auth"]["client_token"]
+    response = requests.post(url, json=payload)
 
-def get_db_creds(token):
-    url = f"{VAULT_ADDR}/v1/myapp/data/webapp/dbcreds"
+    return response.json()["auth"]["client_token"]
+
+
+# Récupération credentials MongoDB dynamiques
+def get_mongo_creds(token):
+
+    url = f"{VAULT_ADDR}/v1/database/creds/mongo-role"
 
     headers = {
         "X-Vault-Token": token
     }
 
-    res = requests.get(url, headers=headers)
-    data = res.json()["data"]["data"]
+    response = requests.get(url, headers=headers)
 
-    return data
+    data = response.json()["data"]
 
-app = FastAPI()
+    return {
+        "username": data["username"],
+        "password": data["password"]
+    }
+
 
 @app.get("/")
 def root():
 
+    # Auth Vault
     token = get_vault_token()
-    creds = get_db_creds(token)
 
-    os.environ["DB_USER"] = creds["username"]
-    os.environ["DB_PASS"] = creds["password"]
+    # Dynamic creds MongoDB
+    creds = get_mongo_creds(token)
+
+    username = creds["username"]
+    password = creds["password"]
+
+    # Connexion MongoDB
+    mongo_uri = (
+        f"mongodb://{username}:{password}"
+        f"@mongo:27017/schooldb?authSource=admin"
+    )
+
+    client = MongoClient(mongo_uri)
+
+    db = client["schooldb"]
+
+    ecoles = db["ecoles"]
+
+    # Recherche Liora
+    liora = ecoles.find_one({"nom": "Liora"})
+
+    if liora:
+
+        return {
+            "message": "Connexion MongoDB via Vault AppRole réussie",
+            "nom": liora["nom"],
+            "adresse": liora["adresse"],
+            "produit": liora["produit"],
+            "vault_username": username
+        }
 
     return {
-        "message": "Le ROLE_ID de votre AppRole et le SECRET_ID de votre AppRole sont :",
-        "role_id": ROLE_ID,
-        "secret_id": SECRET_ID
+        "message": "Ecole non trouvée"
     }
