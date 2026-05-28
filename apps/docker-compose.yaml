@@ -1,23 +1,5 @@
 services:
-  vault-dev:
-    image: hashicorp/vault:latest
-    container_name: vault-dev
-    ports:
-      - "8200:8200"
-    environment:
-      VAULT_DEV_LISTEN_ADDRESS: "0.0.0.0:8200"
-    volumes:
-      - ../vault-data/config:/vault/config
-      - ../vault-data/file:/vault/file
-      - ../vault-data/logs:/vault/logs
-      - ../:/home/vault/vault-beginner
-    cap_add:
-      - IPC_LOCK
-    command: "server"
-    networks:
-      - vault-net    
-
-  vault-microservice:
+  apps:
     image: nom_de_votre_image:tag
     container_name: vault-microservice
     depends_on:
@@ -28,9 +10,3 @@ services:
       SECRET_ID: <<WRITE_YOUR_SECRET_ID>>
     ports:
       - "8000:8000"
-    networks:
-      - vault-net
-
-networks:
-  vault-net:
-    driver: bridge
